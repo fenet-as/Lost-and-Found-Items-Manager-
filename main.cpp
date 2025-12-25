@@ -12,37 +12,30 @@ using namespace std;
 // Item structure
 struct Item {
     int id;
-    char name[50];
-    char category[30];
-    char description[100];
+    char name[51];
+    char category[51];
+    char description[201];
     char date[12];   // YYYY-MM-DD
-    char location[50];
+    char location[61];
     char status[10]; // "Lost" or "Found"
     int matched;     // 0 = No, 1 = Yes
     int claimed;     // 0 = No, 1 = Yes
     int matchedItemID;
-    char personName[50];
-    char personContact[30];
+    char personName[51];
+    char personContact[51];
 };
 
-// Resize dynamic array
-void resizeArray(Item*& items, int& capacity) {
-    int newCapacity = capacity * 2;
-    Item* newItems = new Item[newCapacity]();
-    for (int i = 0; i < capacity; i++)
-        newItems[i] = items[i];
-    delete[] items;
-    items = newItems;
-    capacity = newCapacity;
-}
 
-// Pause
+
+
+
+
+// Helper Functions 
+
 void pause() {
     cout << "\nPress Enter to continue...";
-    cin.ignore(numeric_limits<streamsize>::max(), '\n');
-    cin.get();
+    while (cin.get() != '\n'); // keep reading until Enter is pressed
 }
-
 
 void toLowerCase(const char* src, char* dest) {
     int i = 0;
@@ -53,7 +46,16 @@ void toLowerCase(const char* src, char* dest) {
     dest[i] = '\0';
 }
 
-// Safe input for char arrays
+bool containsSubstring(const char* str, const char* substr) {
+    char lowerStr[200];
+    char lowerSub[200];
+
+    toLowerCase(str, lowerStr);
+    toLowerCase(substr, lowerSub);
+
+    return strstr(lowerStr, lowerSub) != nullptr;
+}
+
 void getInput(const char* prompt, char* input, int size, bool optional = false) {
     while (true) {
         cout << prompt;
@@ -65,21 +67,147 @@ void getInput(const char* prompt, char* input, int size, bool optional = false) 
     }
 }
 
-// Validate date format YYYY-MM-DD
+
 void getValidDate(const char* prompt, char* date) {
-    bool valid;
-    do {
+    while (true) {
         getInput(prompt, date, 12);
-        valid = strlen(date) == 10 && date[4] == '-' && date[7] == '-';
-        for (int i = 0; i < 10 && valid; i++) {
-            if (i == 4 || i == 7) continue;
-            if (date[i] < '0' || date[i] > '9') valid = false;
+
+        // --- Check format YYYY-MM-DD ---
+        if (strlen(date) != 10 || date[4] != '-' || date[7] != '-') {
+            cout << "Invalid date format! Use YYYY-MM-DD.\n";
+            continue;
         }
-        if (!valid) cout << "Invalid date format! Use YYYY-MM-DD.\n";
-    } while (!valid);
+
+        bool formatValid = true;
+        for (int i = 0; i < 10; i++) {
+            if (i == 4 || i == 7) continue; // skip dashes
+            if (!isdigit(date[i])) {
+                formatValid = false;
+                break;
+            }
+        }
+
+        if (!formatValid) {
+            cout << "Invalid date format! Use YYYY-MM-DD.\n";
+            continue;
+        }
+
+        // --- Check valid calendar date ---
+        int year = (date[0]-'0')*1000 + (date[1]-'0')*100 + (date[2]-'0')*10 + (date[3]-'0');
+        int month = (date[5]-'0')*10 + (date[6]-'0');
+        int day = (date[8]-'0')*10 + (date[9]-'0');
+
+        if (month < 1 || month > 12) {
+            cout << "Invalid month! Must be 01-12.\n";
+            continue;
+        }
+
+        int daysInMonth[] = {31,28,31,30,31,30,31,31,30,31,30,31};
+        // Leap year check
+        if ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0))
+            daysInMonth[1] = 29;
+
+        if (day < 1 || day > daysInMonth[month-1]) {
+            cout << "Invalid day for the given month!\n";
+            continue;
+        }
+
+        // --- If all checks passed ---
+        break;
+    }
 }
 
-// Save items safely to file
+
+
+
+
+
+
+
+
+
+//Display & Retrieval Helpers
+
+void displayItem(const Item& item) {
+    cout << "ID: " << item.id << "\n";
+    cout << "Name: " << item.name << "\n";
+    cout << "Category: " << item.category << "\n";
+    cout << "Description: " << item.description << "\n";
+    cout << "Date: " << item.date << "\n";
+    cout << "Location: " << item.location << "\n";
+    cout << "Status: " << item.status << "\n";
+    cout << "Matched: " << (item.matched ? "Yes" : "No") << "\n";
+    cout << "Claimed: " << (item.claimed ? "Yes" : "No") << "\n";
+
+    if (item.matchedItemID != -1)
+        cout << "Matched With ID: " << item.matchedItemID << "\n";
+
+    cout << "Person: " << item.personName << " | Contact: " << item.personContact << "\n";
+    cout << "------------------------------------\n";
+}
+
+void displayResults(Item* items, int* results, int count) {
+    if (count == 0) {
+        cout << "No items found matching criteria.\n";
+        return;
+    }
+
+    cout << "\n========== SEARCH / FILTER RESULTS ==========\n";
+
+    for (int i = 0; i < count; i++) {
+        int idx;
+        if (results != nullptr)
+            idx = results[i];
+        else
+            idx = i;  // If results is nullptr, just display all items
+
+        cout << "ID: " << items[idx].id << "\n";
+        cout << "Name: " << items[idx].name << "\n";
+        cout << "Category: " << items[idx].category << "\n";
+        cout << "Description: " << items[idx].description << "\n";
+        cout << "Date: " << items[idx].date << "\n";
+        cout << "Location: " << items[idx].location << "\n";
+        cout << "Status: " << items[idx].status << "\n";
+        cout << "Matched: " << (items[idx].matched ? "Yes" : "No") << "\n";
+        cout << "Claimed: " << (items[idx].claimed ? "Yes" : "No") << "\n";
+        if (items[idx].matchedItemID != -1)
+            cout << "Matched With ID: " << items[idx].matchedItemID << "\n";
+        cout << "Person: " << items[idx].personName << " | Contact: " << items[idx].personContact << "\n";
+        cout << "---------------------------------------------\n";
+    }
+}
+
+Item* getItemByID(Item items[], int itemCount, int id) {
+    for (int i = 0; i < itemCount; i++) {
+        if (items[i].id == id)
+            return &items[i]; // return address of the matching item
+    }
+    return nullptr; // return nullptr if no item with the given ID is found
+}
+
+
+
+
+// Dynamic Array & Memory Management
+
+void resizeArray(Item*& items, int& capacity) {
+    int newCapacity = capacity * 2;
+    Item* newItems = new Item[newCapacity]();
+    for (int i = 0; i < capacity; i++)
+        newItems[i] = items[i];
+    delete[] items;
+    items = newItems;
+    capacity = newCapacity;
+}
+
+
+
+
+
+
+
+// File Operations
+
 void saveToFile(Item* items, int itemCount, int nextID, const char* filename) {
     const char* tempFile = "temp.dat";
     ofstream out(tempFile, ios::binary);
@@ -95,9 +223,6 @@ void saveToFile(Item* items, int itemCount, int nextID, const char* filename) {
     remove(filename);          // Delete old file
     rename(tempFile, filename); // Rename temp to real file
 }
-
-// Load items from file
-
 
 void loadFromFile(Item*& items, int& itemCount, int& capacity, int& nextID, const char* filename) {
     ifstream in(filename, ios::binary);
@@ -121,27 +246,6 @@ void loadFromFile(Item*& items, int& itemCount, int& capacity, int& nextID, cons
     in.read(reinterpret_cast<char*>(items), sizeof(Item) * itemCount);
     in.close();
 }
-
-
-void displayItem(const Item& item) {
-    cout << "ID: " << item.id << "\n";
-    cout << "Name: " << item.name << "\n";
-    cout << "Category: " << item.category << "\n";
-    cout << "Description: " << item.description << "\n";
-    cout << "Date: " << item.date << "\n";
-    cout << "Location: " << item.location << "\n";
-    cout << "Status: " << item.status << "\n";
-    cout << "Matched: " << (item.matched ? "Yes" : "No") << "\n";
-    cout << "Claimed: " << (item.claimed ? "Yes" : "No") << "\n";
-
-    if (item.matchedItemID != -1)
-        cout << "Matched With ID: " << item.matchedItemID << "\n";
-
-    cout << "Person: " << item.personName << " | Contact: " << item.personContact << "\n";
-    cout << "------------------------------------\n";
-}
-
-
 
 void viewFromFile(const char* filename) {
     ifstream in(filename, ios::binary);
@@ -171,7 +275,6 @@ void viewFromFile(const char* filename) {
     in.close();
 }
 
-// Clear all items with confirmation
 void clearAllItems(Item* items, int& itemCount, int& nextID, const char* filename) {
     char confirm;
     cout << "Are you sure you want to delete ALL items? (Y/N): ";
@@ -195,22 +298,15 @@ void clearAllItems(Item* items, int& itemCount, int& nextID, const char* filenam
 }
 
 
-// Main menu
-// Main menu - safe input version
-// Main menu
-
-bool containsSubstring(const char* str, const char* substr) {
-    char lowerStr[200];
-    char lowerSub[200];
-
-    toLowerCase(str, lowerStr);
-    toLowerCase(substr, lowerSub);
-
-    return strstr(lowerStr, lowerSub) != nullptr;
-}
 
 
 
+
+
+
+
+
+//Search & Filter Functions
 
 int searchByName(Item* items, int itemCount, const char* name, int* results) {
     int count = 0;
@@ -252,7 +348,6 @@ int searchByLocation(Item* items, int itemCount, const char* location, int* resu
     return count;
 }
 
-
 int searchByStatus(Item* items, int itemCount, const char* status, int* results) {
     int count = 0;
     char lowerStatus[10];
@@ -268,8 +363,6 @@ int searchByStatus(Item* items, int itemCount, const char* status, int* results)
     }
     return count;
 }
-
-
 
 int filterByMatched(Item* items, int itemCount, int matchedValue, int* results) {
     int count = 0;
@@ -293,42 +386,13 @@ int filterByClaimed(Item* items, int itemCount, int claimedValue, int* results) 
 
 
 
-// Display search/filter results in full item format
-
-void displayResults(Item* items, int* results, int count) {
-    if (count == 0) {
-        cout << "No items found matching criteria.\n";
-        return;
-    }
-
-    cout << "\n========== SEARCH / FILTER RESULTS ==========\n";
-
-    for (int i = 0; i < count; i++) {
-        int idx;
-        if (results != nullptr)
-            idx = results[i];
-        else
-            idx = i;  // If results is nullptr, just display all items
-
-        cout << "ID: " << items[idx].id << "\n";
-        cout << "Name: " << items[idx].name << "\n";
-        cout << "Category: " << items[idx].category << "\n";
-        cout << "Description: " << items[idx].description << "\n";
-        cout << "Date: " << items[idx].date << "\n";
-        cout << "Location: " << items[idx].location << "\n";
-        cout << "Status: " << items[idx].status << "\n";
-        cout << "Matched: " << (items[idx].matched ? "Yes" : "No") << "\n";
-        cout << "Claimed: " << (items[idx].claimed ? "Yes" : "No") << "\n";
-        if (items[idx].matchedItemID != -1)
-            cout << "Matched With ID: " << items[idx].matchedItemID << "\n";
-        cout << "Person: " << items[idx].personName << " | Contact: " << items[idx].personContact << "\n";
-        cout << "---------------------------------------------\n";
-    }
-}
 
 
 
-// Main
+
+
+
+// Filter/search menu
 
 void filterSearchMenu(Item* items, int itemCount) {
     int choice;
@@ -416,6 +480,8 @@ void filterSearchMenu(Item* items, int itemCount) {
 
 
 
+//Matching System
+
 int* findPotentialMatches(Item* items, int itemCount, const Item& newItem, int& matchCount) {
     matchCount = 0;
     int* matchIndices = new int[itemCount];
@@ -449,7 +515,6 @@ int* findPotentialMatches(Item* items, int itemCount, const Item& newItem, int& 
     return matchIndices;
 }
 
-
 void markAsMatched(Item& item1, Item& item2) {
     item1.matched = 1;
     item2.matched = 1;
@@ -471,8 +536,6 @@ bool markMatchByID(Item* items, int itemCount, Item& newItem, int matchID) {
     return false; // ID not found
 }
 
-
-
 void displayMatches(Item* items, int* matchIndices, int matchCount) {
     if (matchCount == 0 || matchIndices == nullptr) {
         cout << "No potential matches found.\n";
@@ -489,6 +552,11 @@ void displayMatches(Item* items, int* matchIndices, int matchCount) {
 
 
 
+
+
+
+//Add Item Operations
+
 void addLostItem(Item*& items, int& itemCount, int& capacity, int& nextID, const char* filename) {
     if (itemCount == capacity)
         resizeArray(items, capacity);
@@ -496,13 +564,14 @@ void addLostItem(Item*& items, int& itemCount, int& capacity, int& nextID, const
     Item newItem{};
     newItem.id = nextID++;
 
-    getInput("Enter Item Name: ", newItem.name, 50);
-    getInput("Enter Category: ", newItem.category, 30);
-    getInput("Enter Description: ", newItem.description, 100);
+    getInput("Enter Item Name (max 50 chars): ", newItem.name, 51);
+    getInput("Enter Category (max 50 chars): ", newItem.category, 51);
+    getInput("Enter Description (max 200 chars): ", newItem.description, 201);
     getValidDate("Enter Date Lost (YYYY-MM-DD): ", newItem.date);
-    getInput("Enter Location Lost: ", newItem.location, 50);
-    getInput("Enter Owner Name: ", newItem.personName, 50);
-    getInput("Enter Owner Contact: ", newItem.personContact, 30);
+    getInput("Enter Location Lost (max 60 chars): ", newItem.location, 61);
+    getInput("Enter Owner Name (max 50 chars): ", newItem.personName, 51);
+    getInput("Enter Owner Contact (max 50 chars): ", newItem.personContact, 51);
+
 
     strcpy(newItem.status, "Lost");
     newItem.matched = 0;
@@ -557,8 +626,6 @@ void addLostItem(Item*& items, int& itemCount, int& capacity, int& nextID, const
 
     pause();
 }
-
-
 
 void addFoundItem(Item*& items, int& itemCount, int& capacity, int& nextID, const char* filename) {
     if (itemCount == capacity)
@@ -630,14 +697,14 @@ void addFoundItem(Item*& items, int& itemCount, int& capacity, int& nextID, cons
 }
 
 
-Item* getItemByID(Item* items, int itemCount, int id) {
-    for (int i = 0; i < itemCount; i++) {
-        if (items[i].id == id)
-            return &items[i];
-    }
-    return nullptr;
-}
 
+
+
+
+
+
+
+//Update Operations
 void updateItemMenu(Item* item) {
     int choice;
 
@@ -719,6 +786,14 @@ void updateItem(Item* items, int itemCount, const char* filename, int nextID) {
     cout << "Item updated successfully!\n";
 }
 
+
+
+
+
+
+
+
+//Delete & Claim Operations
 
 void deleteItem(Item*& items, int& itemCount, int& nextID, const char* filename) {
     if (itemCount == 0) {
@@ -812,14 +887,17 @@ void markAsClaimed(Item* items, int itemCount, const char* filename, int nextID)
 
 
 
-// Swap two items
+
+
+
+//Sorting System
+
 void swapItems(Item& a, Item& b) {
     Item temp = a;
     a = b;
     b = temp;
 }
 
-// Sort by ID
 void sortByID(Item* items, int itemCount, bool ascending = true) {
     for (int i = 0; i < itemCount - 1; i++) {
         for (int j = 0; j < itemCount - i - 1; j++) {
@@ -831,7 +909,6 @@ void sortByID(Item* items, int itemCount, bool ascending = true) {
     }
 }
 
-// Sort by Name (alphabetical)
 void sortByName(Item* items, int itemCount, bool ascending = true) {
     for (int i = 0; i < itemCount - 1; i++) {
         for (int j = 0; j < itemCount - i - 1; j++) {
@@ -843,7 +920,6 @@ void sortByName(Item* items, int itemCount, bool ascending = true) {
     }
 }
 
-// Sort by Date (YYYY-MM-DD)
 void sortByDate(Item* items, int itemCount, bool ascending = true) {
     for (int i = 0; i < itemCount - 1; i++) {
         for (int j = 0; j < itemCount - i - 1; j++) {
@@ -855,7 +931,6 @@ void sortByDate(Item* items, int itemCount, bool ascending = true) {
     }
 }
 
-// Sort by Status (Lost first / Found first)
 void sortByStatus(Item* items, int itemCount, bool lostFirst = true) {
     for (int i = 0; i < itemCount - 1; i++) {
         for (int j = 0; j < itemCount - i - 1; j++) {
@@ -866,7 +941,6 @@ void sortByStatus(Item* items, int itemCount, bool lostFirst = true) {
         }
     }
 }
-
 
 void sortMenu(Item* items, int itemCount, const char* filename, int nextID) {
     int choice;
@@ -918,6 +992,13 @@ void sortMenu(Item* items, int itemCount, const char* filename, int nextID) {
     } while (true);
 }
 
+
+
+
+
+
+
+//Main Menu Controller
 void mainMenu(Item*& items, int& itemCount, int& capacity, int& nextID, const char* filename) {
     int choice;
     do {
@@ -980,6 +1061,12 @@ void mainMenu(Item*& items, int& itemCount, int& capacity, int& nextID, const ch
 
     } while (choice != 10);
 }
+
+
+
+
+
+
 
 
 int main() {
